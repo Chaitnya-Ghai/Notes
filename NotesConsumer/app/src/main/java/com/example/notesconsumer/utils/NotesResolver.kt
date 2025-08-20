@@ -3,9 +3,12 @@ package com.example.notesconsumer.utils
 import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
+import android.database.ContentObserver
 import android.net.Uri
 import androidx.core.net.toUri
 import com.example.notesconsumer.Note
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
 
 const val AUTHORITY = "chaitnya.ghai.notes.provider"
 const val NOTES_TABLE = "notes"
@@ -63,4 +66,18 @@ fun ContentResolver.deleteNote(
 ) {
     val deleteUri = "content://$AUTHORITY/$NOTES_TABLE/$id".toUri()
     delete(deleteUri, null, null)
+}
+
+fun ContentResolver.observe(context: Context,uri: Uri) = callbackFlow<List<Note>> {
+    val observer = object : ContentObserver(null){
+        override fun onChange(selfChange: Boolean) {
+            val notes = getAllNotes(context)
+            trySend(notes)
+        }
+    }
+    registerContentObserver(CONTENT_URI,false,observer)
+
+    awaitClose {
+        unregisterContentObserver(observer)
+    }
 }
